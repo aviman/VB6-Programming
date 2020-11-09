@@ -1,0 +1,97 @@
+/* Below code gets executed from Excel and it reads the word document and extract data from tables and embedded excel and put it cells in active workbook. */
+
+Sub extractData()
+
+Dim wd As New Word.Application
+Dim doc As Word.Document
+Dim sh As Worksheet
+Dim filepath As String
+Dim fileName As Variant
+Dim strCellText As String
+Dim firstlinetext As String
+Dim firstenter As Integer
+Dim oWB As Excel.Workbook
+filepath = (ActiveWorkbook.Path & "\" & "*.docx")
+' Dim filesEntries() As String
+fileName = Dir(filepath)
+
+wd.Visible = True
+
+sheetrow = 2
+While fileName <> ""
+fileNameFull = (ActiveWorkbook.Path & "\" & fileName)
+sheetrow = sheetrow + 1
+
+Set doc = wd.Documents.Open(fileNameFull)
+Set tbls = doc.Tables
+Set sh = ActiveSheet
+
+
+j = 1
+For i = 2 To 4 Step 2
+  sh.Cells(sheetrow, j).Value = Application.WorksheetFunction.Clean(tbls(2).Rows(1).Cells(i).Range.Text)
+ j = j + 1
+Next
+j = 3
+For r = 1 To 3
+    For i = 2 To 6 Step 2
+        sh.Cells(sheetrow, j).Value = Application.WorksheetFunction.Clean(tbls(3).Rows(r).Cells(i).Range.Text)
+        j = j + 1
+    Next
+Next
+
+sh.Cells(sheetrow, j).Value = Application.WorksheetFunction.Clean(tbls(4).Rows(2).Cells(1).Range.Text)
+
+strCellText = Application.WorksheetFunction.Clean(tbls(5).Rows(4).Cells(2).Range.Text)
+firstlinetext = Asc(Mid(strCellText, 83, 1))
+j = j + 1
+sh.Cells(sheetrow, j).Value = Trim(Mid(strCellText, InStr(1, strCellText, "Start date:") + 12, InStr(1, strCellText, "Cut-over") - 1 - 12))
+j = j + 1
+sh.Cells(sheetrow, j).Value = Trim(Mid(strCellText, InStr(1, strCellText, "Cut-over date:") + 15, InStr(1, strCellText, "/") - InStr(1, strCellText, "Cut-over") - 15))
+
+' strCellText = Application.WorksheetFunction.Clean(tbls(5).Rows(4).Cells(2).Range.)
+
+j = j + 1
+For lShapeCnt = 1 To doc.InlineShapes.Count
+    If doc.InlineShapes(lShapeCnt).Type = wdInlineShapeEmbeddedOLEObject Then
+        If InStr(1, doc.InlineShapes(lShapeCnt).OLEFormat.progID, "Excel") Then
+             doc.InlineShapes(lShapeCnt).OLEFormat.Activate
+              Set oWB = doc.InlineShapes(lShapeCnt).OLEFormat.Object
+            ' Debug.Print (oWB.Sheets(1).Range("A3").Text)
+            
+            With oWB.Worksheets(1) ' can be multiple sheets, #2 is needed in this case
+                       ' sh.Cells(sheetrow, j).Value = .Cells(13, 8)
+                       ' j = j + 1
+                       ' sh.Cells(sheetrow, j).Value = .Cells(13, 10)
+                        ' For iRow = 3 To .UsedRange.Rows.Count
+                         '   For iCol = 1 To .UsedRange.Columns.Count
+                          '          Debug.Print .Cells(iRow, iCol) & "; ";
+                           ' Next iCol
+                           ' Debug.Print 'line feed
+                       ' Next iRow
+                       
+                       For iRow = 3 To 13
+                         sh.Cells(sheetrow, j).Value = .Cells(iRow, 8)
+                         j = j + 1
+                        Next iRow
+                        sh.Cells(sheetrow, j).Value = .Cells(iRow - 1, 10)
+                       
+                    End With
+'            oWB.Close
+        
+        End If
+    End If
+   
+   
+
+Next lShapeCnt
+
+
+
+doc.Close
+
+fileName = Dir
+Wend
+wd.Quit
+MsgBox ("Done processing")
+End Sub
